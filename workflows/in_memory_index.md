@@ -1,7 +1,7 @@
 **Usage for in-memory indices**
 ================================
 
-To generate index, use the `apps/build_memory_index` program. 
+To generate index, use the `apps/build_memory_index_pag` program. 
 --------------------------------------------------------------
 
 The arguments are as follows:
@@ -14,11 +14,12 @@ The arguments are as follows:
 6. **-L (--Lbuild)** (default is 100): the size of search list we maintain during index building. Typical values are between 75 to 400. Larger values will take more time to build but result in indices that provide higher recall for the same search complexity. Ensure that value of L is at least that of R value unless you need to build indices really quickly and can somewhat compromise on quality. 
 7. **--alpha** (default is 1.2): A float value between 1.0 and 1.5 which determines the diameter of the graph, which will be approximately *log n* to the base alpha. Typical values are between 1 to 1.5. 1 will yield the sparsest graph, 1.5 will yield denser graphs. 
 8. **T (--num_threads)** (default is to get_omp_num_procs()): number of threads used by the index build process. Since the code is highly parallel, the  indexing time improves almost linearly with the number of threads (subject to the cores available on the machine and DRAM bandwidth).
-9. **--build_PQ_bytes** (default is 0): Set to a positive value less than the dimensionality of the data to enable faster index build with PQ based distance comparisons. Defaults to using full precision vectors for distance comparisons.
-10.**--use_opq**: use the flag to use OPQ rather than PQ compression. OPQ is more space efficient for some high dimensional datasets, but also needs a bit more build time.
+9. **--redundant_num**, redundant number of residual point to select partitions.
+10. **sample_rate**, the sample rate of aggregation points
+11. **extra_rate**, extra rate allow to exceed the ideal partition size.
 
 
-To search the generated index, use the `apps/search_memory_index` program:
+To search the generated index, use the `apps/search_memory_index_pag` program:
 ---------------------------------------------------------------------------
 
 
@@ -42,7 +43,7 @@ This example demonstrates the use of the commands above on a 100K slice of the [
 
 Download the base and query set and convert the data to binary format
 ```bash
-mkdir -p DiskANN/build/data && cd DiskANN/build/data
+mkdir -p DSANN/build/data && cd DSANN/build/data
 wget ftp://ftp.irisa.fr/local/texmex/corpus/sift.tar.gz
 tar -xf sift.tar.gz
 cd ..
@@ -53,21 +54,7 @@ cd ..
 Now build and search the index and measure the recall using ground truth computed using brutefoce. 
 ```bash
 ./apps/utils/compute_groundtruth  --data_type float --dist_fn l2 --base_file data/sift/sift_learn.fbin --query_file  data/sift/sift_query.fbin --gt_file data/sift/sift_query_learn_gt100 --K 100
-./apps/build_memory_index  --data_type float --dist_fn l2 --data_path data/sift/sift_learn.fbin --index_path_prefix data/sift/index_sift_learn_R32_L50_A1.2 -R 32 -L 50 --alpha 1.2
- ./apps/search_memory_index  --data_type float --dist_fn l2 --index_path_prefix data/sift/index_sift_learn_R32_L50_A1.2 --query_file data/sift/sift_query.fbin  --gt_file data/sift/sift_query_learn_gt100 -K 10 -L 10 20 30 40 50 100 --result_path data/sift/res
+./apps/build_memory_index_pag  --data_type float --dist_fn l2 --data_path data/sift/sift_learn.fbin --index_path_prefix data/sift/index_sift_learn_R32_L50_A1.2 -R 32 -L 50 --alpha 1.2 --sample_rate 0.2 --redundant_num 4 --extra_rate 5
+ ./apps/search_memory_index_pag  --data_type float --dist_fn l2 --index_path_prefix data/sift/index_sift_learn_R32_L50_A1.2 --query_file data/sift/sift_query.fbin  --gt_file data/sift/sift_query_learn_gt100 -K 10 -L 10 20 30 40 50 100 --result_path data/sift/res
  ```
- 
-
- The output of search lists the throughput (Queries/sec) as well as mean and 99.9 latency in microseconds for each `L` parameter provided. (We measured on a 32-core 64-vCPU D-series Azure VM)
- ```
-  Ls        QPS      Avg dist cmps  Mean Latency (mus)   99.9 Latency   Recall@10
-=================================================================================
-  10   319901.78            348.93              174.51        4943.35       97.80
-  20   346572.72            525.85              183.36         376.60       98.93
-  30   292060.12            688.86              217.73         421.60       99.30
-  40   248945.22            841.74              255.41         476.80       99.45
-  50   215888.81            986.67              294.62         542.21       99.56
- 100   129711.39           1631.94              490.58         848.61       99.88
- ```
-
 
