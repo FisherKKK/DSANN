@@ -34,3 +34,4 @@ Please see the following pages on using the compiled code:
 
 - [Commandline interface for building and search SSD based indices](workflows/SSD_index.md)  
 - [Commandline interface for building and search in memory indices](workflows/in_memory_index.md) 
+- Commandline interface for building and search in Pangu DFS indices, coming soon
